@@ -1,0 +1,75 @@
+version: '3.9'
+services:
+  metabase-app:
+    image: metabase/metabase:latest
+    container_name: metabase-app
+    hostname: metabase-app
+    volumes:
+      - metabase-data:/metabase-data
+    ports:
+      - 3000:3000
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabasedb
+      MB_DB_PORT: 5432
+      MB_DB_USER: metabaseuser
+      MB_DB_PASS: metabasepass
+      MB_DB_HOST: metabase-database
+    networks:
+      - metabase-network
+    depends_on:
+      - metabase-database
+
+  metabase-database:
+    image: postgres:latest
+    container_name: metabase-database
+    hostname: metabase-database
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: metabaseuser
+      POSTGRES_DB: metabasedb
+      POSTGRES_PASSWORD: metabasepass
+    networks:
+      - metabase-network
+  
+  cms:
+    image: naskio/strapi
+    platform: linux/x86_64
+    environment:
+      NODE_ENV: development
+      DATABASE_CLIENT: ${DATABASE_CLIENT}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    depends_on:
+      - content-database
+    ports:
+      - '1337:1337'
+    networks:
+      - metabase-network  
+  
+  content-database:
+    image: postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - metabase-data:/var/lib/postgresql/data/ 
+    ports:
+      - "5433:5433" 
+    networks:
+      - metabase-network
+    command: -p 5433
+
+networks:
+  metabase-network:
+    driver: bridge
+
+volumes:
+  metabase-data: {}
